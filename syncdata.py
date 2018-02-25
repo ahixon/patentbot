@@ -8,6 +8,7 @@ import tqdm
 import subprocess
 import glob
 import re
+import xml.etree.ElementTree as ElementTree
 
 BDSS_URL = 'https://developer.uspto.gov/products/bdss/get/ajax'
 BDSS_DATA = {
@@ -35,7 +36,7 @@ class PatentCatalogue(object):
   def init_db(self):
     c = self.db.cursor()
     c.execute('''CREATE TABLE releases (id integer primary key, name text, url text, downloaded boolean, extracted boolean)''')
-    c.execute('''CREATE TABLE patent (filename text primary key, type text, release_id integer, extracted boolean)''')
+    c.execute('''CREATE TABLE patent (filename text primary key, release_id integer, type varchar(15), title text, patent_reference text, extracted boolean)''')
     c.execute('''CREATE TABLE image (filename text primary key, patent_id integer, tweeted boolean)''')
 
     self.db.commit()
@@ -80,29 +81,62 @@ class PatentCatalogue(object):
 
     return row
 
+  def load_patents_for_release(self, release_id, new_patents):
+    c = self.db.cursor()
+    for patent_fname in new_patents:
+      print 'importing', patent_fname
+
+      patdir = os.path.join(self.release_dir, 'release-%d' % release_id, patent_fname)
+      with open(os.path.join(patdir, patent_fname + '.XML'), 'r') as f:
+        tree = ElementTree.ElementTree()
+        tree.parse("/home/alex/Downloads/US09899976-20180220.XML")
+
+        root = tree.getroot()
+        appref = root.find('./us-bibliographic-data-grant/application-reference')
+        patent_type = appref.get('appl-type')
+
+        appnum_country = appref.find('./document-id/country').text
+        appnum = appref.find('./document-id/doc-number').text
+
+        title = root.find('./us-bibliographic-data-grant/invention-title').text
+
+        c.execute('INSERT INTO patent VALUES (?, ?, ?, ?, ?, 1)', [patent_fname, release_id, patent_type, title, appnum_country + appnum])
+
+        imgs = root.findall('./drawings/figure/img')
+
+        for img in imgs:
+          c.execute('INSERT INTO image VALUES (?, ?, 0)', [img.get('file'), patent_fname])
+
+      db.commit()
+
+
   def extract(self, row):
     release_id, name, url, downloaded, _ = row
+    patent_release_dir = os.path.join(self.release_dir, 'release-%d' % release_id)
+
+    if not os.path.exists(patent_release_dir):
+      os.mkdir(patent_release_dir)
 
     # extract archive tar to get a collection of patents
     print 'extracting release %s' % name
     subprocess.check_call(['tar',
-                          '-C', self.release_dir,
+                          '-C', patent_release_dir,
                           '-xf', os.path.join(self.cache_dir, name)])
+
+
+    # FIXME: should use the patents that actually come from the zip rather
+    # than rescanning
+    new_patents = []
+    for zipname in tqdm.tqdm(glob.glob(os.path.join(patent_release_dir, '*', '*', '*.[zZ][iI][pP]'))):
+      new_patents.append(re.sub(r'.*/(.*)\.ZIP$', r'\g<1>', zipname))
+      subprocess.check_call(['unzip', '-qq', '-o', zipname, '-d', self.patent_dir])
+      os.remove(zipname)
 
     c = self.db.cursor()
     c.execute('UPDATE releases SET extracted = 1 WHERE id = ?', [release_id])
     self.db.commit()
 
-    # FIXME: should use the patents that actually come from the zip rather
-    # than rescanning
-    new_patents = []
-    for zipname in tqdm.tqdm(glob.glob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]'))):
-      new_patents.append(re.sub(r'.*/(.*)\.ZIP$', r'\g<1>', zipname))
-      subprocess.check_call(['unzip', '-qq', '-o', zipname, '-d', self.patent_dir])
-      os.remove(zipname)
-
-    print new_patents
-
+    return self.load_patents_for_release(release_id, new_patents)
 
   def scan_remote_releases(self):
     r = requests.get(BDSS_URL + '?data=' + urllib.quote(json.dumps(BDSS_DATA)))
