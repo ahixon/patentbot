@@ -127,7 +127,8 @@ def pull(ctx, name):
     cat.download_missing()
   else:
     rel = cat.find_release_by_name(name)
-    rel.download_by_name(name) if rel
+    if rel:
+      rel.download_by_name(name)
 
 if __name__ == '__main__':
   cli(obj={})
