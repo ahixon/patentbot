@@ -6,6 +6,8 @@ import urllib
 import json
 import tqdm
 import subprocess
+import glob
+import re
 
 BDSS_URL = 'https://developer.uspto.gov/products/bdss/get/ajax'
 BDSS_DATA = {
@@ -82,6 +84,7 @@ class PatentCatalogue(object):
     release_id, name, url, downloaded, _ = row
 
     # extract archive tar to get a collection of patents
+    print 'extracting release %s' % name
     subprocess.check_call(['tar',
                           '-C', self.release_dir,
                           '-xf', os.path.join(self.cache_dir, name)])
@@ -93,10 +96,10 @@ class PatentCatalogue(object):
     # FIXME: should use the patents that actually come from the zip rather
     # than rescanning
     new_patents = []
-    for zipname in glob.iglob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]')):
-      new_patents.append(re.sub('.*/(.*)\.ZIP$', '\1', zipname))
-      subprocess.check_call(['unzip', zipname, '-d', self.patent_dir])
-      os.delete(zipname)
+    for zipname in tqdm.tqdm(glob.iglob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]'))):
+      new_patents.append(re.sub(r'.*/(.*)\.ZIP$', r'\g<1>', zipname))
+      subprocess.check_call(['unzip', '-qq', zipname, '-d', self.patent_dir])
+      os.remove(zipname)
 
     print new_patents
 
