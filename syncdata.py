@@ -5,6 +5,7 @@ import os
 import urllib
 import json
 import tqdm
+import subprocess
 
 BDSS_URL = 'https://developer.uspto.gov/products/bdss/get/ajax'
 BDSS_DATA = {
@@ -121,6 +122,18 @@ def update(ctx):
 @cli.command()
 @click.pass_context
 @click.argument('name', required=False)
+def extract(ctx, name):
+  cat = ctx.obj['catalogue']
+  if not name:
+    cat.extract_missing()
+  else:
+    rel = cat.find_release_by_name(name)
+    if rel:
+      cat.extract(rel)
+
+@cli.command()
+@click.pass_context
+@click.argument('name', required=False)
 def pull(ctx, name):
   cat = ctx.obj['catalogue']
   if not name:
@@ -128,7 +141,7 @@ def pull(ctx, name):
   else:
     rel = cat.find_release_by_name(name)
     if rel:
-      rel.download_by_name(name)
+      cat.download(rel)
 
 if __name__ == '__main__':
   cli(obj={})
