@@ -98,7 +98,7 @@ class PatentCatalogue(object):
     new_patents = []
     for zipname in tqdm.tqdm(glob.iglob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]'))):
       new_patents.append(re.sub(r'.*/(.*)\.ZIP$', r'\g<1>', zipname))
-      subprocess.check_call(['unzip', '-qq', zipname, '-d', self.patent_dir])
+      subprocess.check_call(['unzip', '-qq', '-o', zipname, '-d', self.patent_dir])
       os.remove(zipname)
 
     print new_patents
