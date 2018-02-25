@@ -96,7 +96,7 @@ class PatentCatalogue(object):
     # FIXME: should use the patents that actually come from the zip rather
     # than rescanning
     new_patents = []
-    for zipname in tqdm.tqdm(glob.iglob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]'))):
+    for zipname in tqdm.tqdm(glob.glob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]'))):
       new_patents.append(re.sub(r'.*/(.*)\.ZIP$', r'\g<1>', zipname))
       subprocess.check_call(['unzip', '-qq', '-o', zipname, '-d', self.patent_dir])
       os.remove(zipname)
