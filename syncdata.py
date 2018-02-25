@@ -23,7 +23,8 @@ class PatentCatalogue(object):
     self.base = base
     self.cache_dir = os.path.join(self.base, 'cache')
     self.patent_dir = os.path.join(self.base, 'patents')
-    for dirpath in [self.cache_dir, self.patent_dir]:
+    self.release_dir = os.path.join(self.base, 'releases')
+    for dirpath in [self.cache_dir, self.patent_dir, self.release_dir]:
       if not os.path.exists(dirpath):
         os.mkdir(dirpath)
 
@@ -82,15 +83,23 @@ class PatentCatalogue(object):
 
     # extract archive tar to get a collection of patents
     subprocess.check_call(['tar',
-                          '-C', self.patent_dir,
-                          'xf', os.path.join(self.cache_dir, name)])
+                          '-C', self.release_dir,
+                          '-xf', os.path.join(self.cache_dir, name)])
 
     c = self.db.cursor()
     c.execute('UPDATE releases SET extracted = 1 WHERE id = ?', [release_id])
     self.db.commit()
 
-    # then for all cat/[patent.zip],
-    # extract that which contains all the tifs and xml
+    # FIXME: should use the patents that actually come from the zip rather
+    # than rescanning
+    new_patents = []
+    for zipname in glob.iglob(os.path.join(self.release_dir, '*', '*', '*.[zZ][iI][pP]')):
+      new_patents.append(re.sub('.*/(.*)\.ZIP$', '\1', zipname))
+      subprocess.check_call(['unzip', zipname, '-d', self.patent_dir])
+      os.delete(zipname)
+
+    print new_patents
+
 
   def scan_remote_releases(self):
     r = requests.get(BDSS_URL + '?data=' + urllib.quote(json.dumps(BDSS_DATA)))
