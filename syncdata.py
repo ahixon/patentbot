@@ -82,6 +82,13 @@ class PatentCatalogue(object):
 
     return row
 
+  def extract_missing(self):
+    c = self.db.cursor()
+    to_download = c.execute('SELECT * from releases WHERE extracted = 0')
+    for row in to_download:
+      self.extract(row)
+
+
   def load_patents_for_release(self, release_id, new_patents):
     c = self.db.cursor()
     for patent_fname in tqdm.tqdm(new_patents, desc='import'):
@@ -123,17 +130,17 @@ class PatentCatalogue(object):
 
     # extract archive tar to get a collection of patents
     print 'extracting release %s' % name
-    # with tarfile.open(os.path.join(self.cache_dir, name), 'r') as tar:
-    #   for tarinfo in tqdm.tqdm(tar, desc='untar'):
-    #     if not tarinfo.isfile():
-    #       continue
+    with tarfile.open(os.path.join(self.cache_dir, name), 'r') as tar:
+      for tarinfo in tqdm.tqdm(tar, desc='untar'):
+        if not tarinfo.isfile():
+          continue
 
-    #     if not os.path.exists(os.path.join(patent_release_dir, os.path.basename(tarinfo.name))):
-    #       # print 'extracting', tarinfo.name, 'to', patent_release_dir
-    #       tar.extract(tarinfo, patent_release_dir)
-    #       os.rename(
-    #         os.path.join(patent_release_dir, tarinfo.name), 
-    #         os.path.join(patent_release_dir, os.path.basename(tarinfo.name)))
+        if not os.path.exists(os.path.join(patent_release_dir, os.path.basename(tarinfo.name))):
+          # print 'extracting', tarinfo.name, 'to', patent_release_dir
+          tar.extract(tarinfo, patent_release_dir)
+          os.rename(
+            os.path.join(patent_release_dir, tarinfo.name), 
+            os.path.join(patent_release_dir, os.path.basename(tarinfo.name)))
 
     new_patents = []
     for zipname in tqdm.tqdm(glob.glob(os.path.join(patent_release_dir, '*.[zZ][iI][pP]')), desc='unzip'):
