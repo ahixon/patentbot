@@ -84,7 +84,7 @@ class PatentCatalogue(object):
 
   def extract_missing(self):
     c = self.db.cursor()
-    to_download = c.execute('SELECT * from releases WHERE extracted = 0 AND downloaded = 1')
+    to_download = c.execute('SELECT * from releases WHERE extracted == 0 AND downloaded = 1')
     for row in to_download:
       print row
       self.extract(row)
@@ -160,9 +160,9 @@ class PatentCatalogue(object):
     c = self.db.cursor()
     for remoteFile in j['productFiles']:
       c.execute('''INSERT OR IGNORE INTO releases(
-                name, url, downloaded)
+                name, url, downloaded, extracted)
                 VALUES 
-                (?, ?, 0)''',
+                (?, ?, 0, 0)''',
                 [remoteFile['fileName'], remoteFile['fileDownloadUrl']])
 
     self.db.commit()
