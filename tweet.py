@@ -23,11 +23,12 @@ title = r[7]
 handle, dest_fname = tempfile.mkstemp('.png')
 os.close(handle)
 
-print dest_fname
 image = Image.open(fname)
 image.save(dest_fname)
 
-print api.update_with_media(dest_fname, title)
+api.update_with_media(dest_fname, title)
 
 c.execute('UPDATE image SET tweeted=1 WHERE filename=?', [r[0]])
 db.commit()
+
+os.remove(dest_fname)
