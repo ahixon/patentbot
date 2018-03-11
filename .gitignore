@@ -1,2 +1,6 @@
 cache/*
 catalogue.db
+twitter_credentials.py
+*.pyc
+patents/*
+releases/*
