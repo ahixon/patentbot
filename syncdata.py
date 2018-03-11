@@ -84,10 +84,10 @@ class PatentCatalogue(object):
 
   def extract_missing(self):
     c = self.db.cursor()
-    to_download = c.execute('SELECT * from releases WHERE extracted = 0')
+    to_download = c.execute('SELECT * from releases WHERE extracted = 0 AND downloaded = 1')
     for row in to_download:
+      print row
       self.extract(row)
-
 
   def load_patents_for_release(self, release_id, new_patents):
     c = self.db.cursor()
